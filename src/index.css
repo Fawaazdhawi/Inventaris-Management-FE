@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
   --color-brand: #ed1c24; /* Telkomsel Red */
   --color-brand-dark: #cc181f;

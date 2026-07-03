@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, CheckCircle2, History, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../utils/api";
 
 export function Peminjaman() {
   const { user } = useAuth();
@@ -9,45 +10,87 @@ export function Peminjaman() {
   const [activeTab, setActiveTab] = useState("aktif"); // aktif, riwayat
   const [isModalOpen, setIsModalOpen] = useState(false);
   
-  const [peminjaman, setPeminjaman] = useState([
-    { id: 1, peminjam: "Budi Santoso", barang: "Proyektor Epson", tglPinjam: "2024-03-10", tglKembali: "-", status: "Dipinjam" },
-    { id: 2, peminjam: "Siti Aminah", barang: "Laptop Lenovo ThinkPad", tglPinjam: "2024-03-12", tglKembali: "-", status: "Dipinjam" },
-    { id: 3, peminjam: "Andi Wijaya", barang: "Kamera DSLR", tglPinjam: "2024-03-05", tglKembali: "2024-03-08", status: "Dikembalikan" },
-    { id: 4, peminjam: "Rina Sari", barang: "Microphone", tglPinjam: "2024-03-01", tglKembali: "2024-03-02", status: "Dikembalikan" },
-  ]);
+  const [peminjaman, setPeminjaman] = useState([]);
+  const [products, setProducts] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    peminjam: user?.name || "", barang: "", tglPinjam: new Date().toISOString().split('T')[0]
+    product_id: "", tglPinjam: new Date().toISOString().split('T')[0]
   });
 
-  const aktifPeminjaman = peminjaman.filter(p => p.status === "Dipinjam");
-  const riwayatPeminjaman = peminjaman.filter(p => p.status === "Dikembalikan");
+  const fetchBorrowings = async () => {
+    try {
+      const res = await apiFetch('/borrowings');
+      setPeminjaman(res.data || res || []);
+    } catch (e) {
+      console.error("Gagal mengambil data peminjaman:", e);
+    }
+  };
+
+  const fetchProducts = async () => {
+    try {
+      const res = await apiFetch('/products');
+      setProducts(res.data || res || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchBorrowings();
+    fetchProducts();
+  }, []);
+
+  const aktifPeminjaman = peminjaman.filter(p => p.status === "dipinjam");
+  const riwayatPeminjaman = peminjaman.filter(p => p.status === "dikembalikan");
 
   const displayedData = activeTab === "aktif" ? aktifPeminjaman : riwayatPeminjaman;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const newItem = { 
-      ...formData, 
-      id: Date.now(),
-      tglKembali: "-",
-      status: "Dipinjam"
-    };
-    setPeminjaman([newItem, ...peminjaman]);
-    setIsModalOpen(false);
-    setFormData({ peminjam: user?.name || "", barang: "", tglPinjam: new Date().toISOString().split('T')[0] });
-    setActiveTab("aktif");
+    if (!formData.product_id) return alert("Pilih barang!");
+    
+    setIsLoading(true);
+    try {
+      await apiFetch('/borrowings', {
+        method: 'POST',
+        body: JSON.stringify({
+          tanggal_pinjam: formData.tglPinjam,
+          product_ids: [parseInt(formData.product_id)]
+        })
+      });
+      setIsModalOpen(false);
+      setFormData({ product_id: "", tglPinjam: new Date().toISOString().split('T')[0] });
+      setActiveTab("aktif");
+      await fetchBorrowings();
+      await fetchProducts(); // Update stock in products list if used elsewhere
+    } catch (e) {
+      alert("Gagal meminjam barang: " + e.message);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleReturn = (id) => {
+  const handleReturn = async (id) => {
     if (window.confirm("Konfirmasi pengembalian barang ini?")) {
-      setPeminjaman(peminjaman.map(p => {
-        if (p.id === id) {
-          return { ...p, status: "Dikembalikan", tglKembali: new Date().toISOString().split('T')[0] };
-        }
-        return p;
-      }));
+      try {
+        await apiFetch(`/borrowings/${id}/return`, {
+          method: 'POST',
+          body: JSON.stringify({
+            tanggal_kembali: new Date().toISOString().split('T')[0]
+          })
+        });
+        await fetchBorrowings();
+      } catch (e) {
+        alert("Gagal mengembalikan barang: " + e.message);
+      }
     }
+  };
+
+  // Helper to get comma separated product names
+  const getProductNames = (details) => {
+    if (!details || details.length === 0) return "-";
+    return details.map(d => d.product?.nama_barang || "Unknown").join(", ");
   };
 
   return (
@@ -109,13 +152,13 @@ export function Peminjaman() {
               {displayedData.length > 0 ? (
                 displayedData.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{item.peminjam}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.barang}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tglPinjam}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tglKembali}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{item.user?.name || '-'}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{getProductNames(item.details)}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tanggal_pinjam || item.tglPinjam}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tanggal_kembali || '-'}</td>
                     <td className="px-6 py-4 text-sm">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.status === 'Dikembalikan' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                        item.status === 'dikembalikan' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                       }`}>
                         {item.status}
@@ -151,38 +194,38 @@ export function Peminjaman() {
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl w-full max-w-md overflow-hidden flex flex-col">
             <div className="p-6 border-b border-gray-100 dark:border-gray-700/50 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Ajukan Peminjaman
-              </h3>
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Form Pengajuan Peminjaman</h3>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300">
                 <X size={20} />
               </button>
             </div>
             
             <div className="p-6">
-              <form id="peminjaman-form" onSubmit={handleSubmit} className="space-y-4">
+              <form id="borrow-form" onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Peminjam</label>
                   <input 
                     type="text" 
-                    required
-                    value={formData.peminjam}
-                    onChange={(e) => setFormData({...formData, peminjam: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                    readOnly
+                    value={user?.name || ""}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white outline-none cursor-not-allowed"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Sesuai dengan akun yang sedang login</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Pilih Barang</label>
-                  <select 
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barang yang Dipinjam</label>
+                  <select
                     required
-                    value={formData.barang}
-                    onChange={(e) => setFormData({...formData, barang: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                    value={formData.product_id}
+                    onChange={(e) => setFormData({...formData, product_id: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
                   >
                     <option value="">-- Pilih Barang --</option>
-                    <option value="Proyektor Epson">Proyektor Epson</option>
-                    <option value="Laptop Lenovo ThinkPad">Laptop Lenovo ThinkPad</option>
-                    <option value="Kamera DSLR">Kamera DSLR</option>
+                    {products.map(p => (
+                      <option key={p.id} value={p.id} disabled={p.stok < 1}>
+                        {p.nama_barang} (Sisa Stok: {p.stok})
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -192,7 +235,7 @@ export function Peminjaman() {
                     required
                     value={formData.tglPinjam}
                     onChange={(e) => setFormData({...formData, tglPinjam: e.target.value})}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
                   />
                 </div>
               </form>
@@ -208,10 +251,11 @@ export function Peminjaman() {
               </button>
               <button 
                 type="submit" 
-                form="peminjaman-form"
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                form="borrow-form"
+                disabled={isLoading}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white disabled:opacity-50 rounded-lg font-medium transition-colors shadow-sm"
               >
-                Simpan
+                {isLoading ? "Memproses..." : "Ajukan Pinjaman"}
               </button>
             </div>
           </div>

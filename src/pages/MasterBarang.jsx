@@ -1,6 +1,10 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Plus, Search, Edit2, Trash2, Eye, X, FileDown, FileText, Image as ImageIcon, Upload } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { apiFetch } from "../utils/api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 export function MasterBarang() {
   const { user } = useAuth();
@@ -13,31 +17,68 @@ export function MasterBarang() {
   const [selectedItem, setSelectedItem] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Dummy Data
-  const [items, setItems] = useState([
-    { id: 1, code: "BRG-001", name: "Laptop Lenovo ThinkPad", category: "Elektronik", stock: 15, location: "Ruang IT", condition: "Baik", image: null },
-    { id: 2, code: "BRG-002", name: "Proyektor Epson", category: "Elektronik", stock: 3, location: "Ruang Meeting 1", condition: "Baik", image: null },
-    { id: 3, code: "BRG-003", name: "Meja Kerja", category: "Furniture", stock: 40, location: "Lantai 2", condition: "Baik", image: null },
-    { id: 4, code: "BRG-004", name: "Kursi Kantor", category: "Furniture", stock: 45, location: "Lantai 2", condition: "Rusak Ringan", image: null },
-    { id: 5, code: "BRG-005", name: "Printer HP LaserJet", category: "Elektronik", stock: 5, location: "Ruang Admin", condition: "Baik", image: null },
-  ]);
+  const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    code: "", name: "", category: "", stock: 0, location: "", condition: "Baik", imagePreview: null
+    code: "", name: "", category_id: "", stock: 0, location: "", condition: "Baik", imagePreview: null, imageFile: null
   });
 
-  const filteredItems = items.filter(item => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    item.code.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const fetchProducts = async () => {
+    try {
+      const response = await apiFetch('/products');
+      // Pagination response has data array inside .data
+      setItems(response.data || response || []);
+    } catch (e) {
+      console.error("Gagal mengambil data barang:", e);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      // Actually we don't have a specific categories API yet, but if you do, fetch it here.
+      // For now, let's simulate fetching or hardcode if the backend endpoint doesn't exist
+      // const res = await apiFetch('/categories'); setCategories(res.data);
+      setCategories([
+        { id: 1, name: 'Elektronik' },
+        { id: 2, name: 'Furniture' },
+        { id: 3, name: 'Kendaraan' },
+      ]);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  useEffect(() => {
+    fetchProducts();
+    fetchCategories();
+  }, []);
+
+  const filteredItems = items.filter(item => {
+    const itemName = item.nama_barang || item.name || '';
+    const itemCode = item.kode_barang || item.code || '';
+    return itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+           itemCode.toLowerCase().includes(searchTerm.toLowerCase());
+  });
 
   const openModal = (mode, item = null) => {
     setModalMode(mode);
     setSelectedItem(item);
     if (item && mode !== 'add') {
-      setFormData({ ...item, imagePreview: item.image });
+      const imageUrl = item.image ? `http://localhost${item.image}` : null;
+      setFormData({ 
+        code: item.kode_barang || "", 
+        name: item.nama_barang || "", 
+        category_id: item.category_id || "", 
+        stock: item.stok || 0, 
+        location: item.lokasi_penyimpanan || "", 
+        condition: item.kondisi_barang || "Baik", 
+        imagePreview: imageUrl,
+        imageFile: null
+      });
     } else {
-      setFormData({ code: "", name: "", category: "", stock: 0, location: "", condition: "Baik", imagePreview: null });
+      setFormData({ code: "", name: "", category_id: categories[0]?.id || "", stock: 0, location: "", condition: "Baik", imagePreview: null, imageFile: null });
     }
     setIsModalOpen(true);
   };
@@ -52,34 +93,104 @@ export function MasterBarang() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, imagePreview: reader.result });
+        setFormData({ ...formData, imagePreview: reader.result, imageFile: file });
       };
       reader.readAsDataURL(file);
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const submitData = { ...formData, image: formData.imagePreview };
-    delete submitData.imagePreview;
+    setIsLoading(true);
+    try {
+      const submitData = new FormData();
+      submitData.append('kode_barang', formData.code);
+      submitData.append('nama_barang', formData.name);
+      submitData.append('category_id', formData.category_id);
+      submitData.append('stok', formData.stock);
+      submitData.append('lokasi_penyimpanan', formData.location);
+      submitData.append('kondisi_barang', formData.condition);
+      
+      if (formData.imageFile) {
+        submitData.append('image', formData.imageFile);
+      }
 
-    if (modalMode === 'add') {
-      const newItem = { ...submitData, id: Date.now() };
-      setItems([...items, newItem]);
-    } else if (modalMode === 'edit') {
-      setItems(items.map(item => item.id === selectedItem.id ? { ...submitData, id: selectedItem.id } : item));
+      if (modalMode === 'add') {
+        await apiFetch('/products', {
+          method: 'POST',
+          body: submitData
+        });
+      } else if (modalMode === 'edit') {
+        submitData.append('_method', 'PUT'); // Laravel workaround for FormData PUT
+        await apiFetch(`/products/${selectedItem.id}`, {
+          method: 'POST',
+          body: submitData
+        });
+      }
+      
+      await fetchProducts(); // Refresh list
+      closeModal();
+    } catch (e) {
+      alert("Gagal menyimpan barang: " + e.message);
+    } finally {
+      setIsLoading(false);
     }
-    closeModal();
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = async (id) => {
     if (window.confirm("Apakah anda yakin ingin menghapus barang ini?")) {
-      setItems(items.filter(item => item.id !== id));
+      try {
+        await apiFetch(`/products/${id}`, { method: 'DELETE' });
+        await fetchProducts();
+      } catch (e) {
+        alert("Gagal menghapus barang: " + e.message);
+      }
     }
   };
 
   const handleExport = (type) => {
-    alert(`Mengekspor data ke format ${type}... (Simulasi)`);
+    if (type === 'Excel') {
+      const dataToExport = filteredItems.map((item, index) => ({
+        No: index + 1,
+        'Kode Barang': item.kode_barang,
+        'Nama Barang': item.nama_barang,
+        'Kategori': item.category?.name || 'Umum',
+        'Stok': item.stok,
+        'Lokasi': item.lokasi_penyimpanan,
+        'Kondisi': item.kondisi_barang
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Barang");
+      XLSX.writeFile(workbook, "Laporan_Master_Barang.xlsx");
+    } else if (type === 'PDF') {
+      const doc = new jsPDF();
+      doc.text("Laporan Master Data Barang", 14, 15);
+      
+      const tableColumn = ["No", "Kode", "Nama Barang", "Kategori", "Stok", "Lokasi", "Kondisi"];
+      const tableRows = [];
+
+      filteredItems.forEach((item, index) => {
+        const rowData = [
+          index + 1,
+          item.kode_barang,
+          item.nama_barang,
+          item.category?.name || 'Umum',
+          item.stok,
+          item.lokasi_penyimpanan,
+          item.kondisi_barang
+        ];
+        tableRows.push(rowData);
+      });
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+      });
+
+      doc.save("Laporan_Master_Barang.pdf");
+    }
   };
 
   return (
@@ -149,27 +260,27 @@ export function MasterBarang() {
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-6 py-4">
                       {item.image ? (
-                        <img src={item.image} alt={item.name} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                        <img src={`http://localhost${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
                       ) : (
                         <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400">
                           <ImageIcon size={16} />
                         </div>
                       )}
                     </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{item.code}</td>
-                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.name}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{item.kode_barang}</td>
+                    <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.nama_barang}</td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">{item.category}</span>
+                      <span className="inline-block px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded-md text-xs">{item.category?.name || 'Umum'}</span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">
-                      <span className={`font-semibold ${item.stock < 10 ? 'text-red-500' : ''}`}>{item.stock}</span>
+                      <span className={`font-semibold ${item.stok < 10 ? 'text-red-500' : ''}`}>{item.stok}</span>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        item.condition === 'Baik' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
+                        item.kondisi_barang === 'Baik' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 
                         'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                       }`}>
-                        {item.condition}
+                        {item.kondisi_barang}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-right space-x-2 whitespace-nowrap">
@@ -277,14 +388,18 @@ export function MasterBarang() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
-                      <input 
-                        type="text" 
+                      <select 
                         required
-                        readOnly={modalMode === 'view'}
-                        value={formData.category}
-                        onChange={(e) => setFormData({...formData, category: e.target.value})}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none read-only:bg-gray-100 dark:read-only:bg-gray-800"
-                      />
+                        disabled={modalMode === 'view'}
+                        value={formData.category_id}
+                        onChange={(e) => setFormData({...formData, category_id: parseInt(e.target.value)})}
+                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                      >
+                        <option value="">Pilih Kategori</option>
+                        {categories.map(cat => (
+                          <option key={cat.id} value={cat.id}>{cat.name}</option>
+                        ))}
+                      </select>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>
@@ -339,9 +454,10 @@ export function MasterBarang() {
                 <button 
                   type="submit" 
                   form="item-form"
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors shadow-sm"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors shadow-sm"
                 >
-                  {modalMode === 'add' ? 'Simpan Data' : 'Simpan Perubahan'}
+                  {isLoading ? 'Menyimpan...' : (modalMode === 'add' ? 'Simpan Data' : 'Simpan Perubahan')}
                 </button>
               )}
             </div>

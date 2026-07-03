@@ -1,27 +1,97 @@
-import { Package, ArrowLeftRight, CheckCircle, AlertTriangle, FileDown } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Package, ArrowLeftRight, CheckCircle, AlertTriangle, FileDown, Loader2 } from "lucide-react";
+import { apiFetch } from "../utils/api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export function Dashboard() {
-  const stats = [
-    { name: "Total Barang", value: "245", icon: Package, color: "bg-blue-500" },
-    { name: "Barang Dipinjam", value: "42", icon: ArrowLeftRight, color: "bg-yellow-500" },
-    { name: "Barang Tersedia", value: "203", icon: CheckCircle, color: "bg-green-500" },
-  ];
+  const [data, setData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [lowStockProducts, setLowStockProducts] = useState([]);
 
-  const chartData = [
-    { month: "Jan", count: 25 },
-    { month: "Feb", count: 40 },
-    { month: "Mar", count: 32 },
-    { month: "Apr", count: 56 },
-    { month: "May", count: 45 },
-    { month: "Jun", count: 68 },
-    { month: "Jul", count: 74 },
-  ];
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        const res = await apiFetch('/dashboard');
+        setData(res);
+        
+        // Let's also fetch products briefly just to check low stock
+        const productRes = await apiFetch('/products');
+        const products = productRes.data || productRes || [];
+        const lowStock = products.filter(p => p.stok < 5 && p.stok > 0);
+        setLowStockProducts(lowStock);
+      } catch (e) {
+        console.error("Failed to load dashboard:", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-  const maxCount = Math.max(...chartData.map(d => d.count));
+    fetchDashboardData();
+  }, []);
 
   const handleExport = () => {
-    alert("Mengekspor Laporan Dashboard ke format PDF... (Simulasi)");
+    const doc = new jsPDF();
+    doc.text("Laporan Ringkasan Dashboard", 14, 15);
+    
+    // Add stats
+    doc.setFontSize(12);
+    doc.text(`Total Macam Barang: ${data?.total_barang || 0}`, 14, 25);
+    doc.text(`Barang Dipinjam: ${data?.barang_dipinjam || 0}`, 14, 32);
+    doc.text(`Total Stok Tersedia: ${data?.barang_tersedia || 0}`, 14, 39);
+
+    if (lowStockProducts.length > 0) {
+      doc.setTextColor(255, 0, 0);
+      doc.text("Peringatan: Ada barang dengan stok menipis!", 14, 50);
+      doc.setTextColor(0, 0, 0);
+      const lowStockNames = lowStockProducts.map(p => p.nama_barang).join(', ');
+      doc.text(`Barang: ${lowStockNames}`, 14, 57);
+    }
+
+    // Add Chart Data as Table
+    const tableColumn = ["Bulan", "Jumlah Peminjaman"];
+    const tableRows = defaultChartData.map(d => [d.month, d.count]);
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 70,
+    });
+
+    doc.save("Laporan_Dashboard.pdf");
   };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 text-red-600 animate-spin" />
+      </div>
+    );
+  }
+
+  const stats = [
+    { name: "Total Macam Barang", value: data?.total_barang || 0, icon: Package, color: "bg-blue-500" },
+    { name: "Barang Dipinjam", value: data?.barang_dipinjam || 0, icon: ArrowLeftRight, color: "bg-yellow-500" },
+    { name: "Total Stok Tersedia", value: data?.barang_tersedia || 0, icon: CheckCircle, color: "bg-green-500" },
+  ];
+
+  // Helper to map numeric month to string
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  
+  // Create default 12 months array
+  const defaultChartData = monthNames.map((m, i) => ({ month: m, count: 0 }));
+  
+  // Fill with real data
+  if (data?.grafik_peminjaman_bulanan) {
+    data.grafik_peminjaman_bulanan.forEach(item => {
+      const mIndex = parseInt(item.month) - 1;
+      if (defaultChartData[mIndex]) {
+        defaultChartData[mIndex].count = parseInt(item.total);
+      }
+    });
+  }
+
+  const maxCount = Math.max(...defaultChartData.map(d => d.count), 10); // at least 10 so it's not empty if all 0
 
   return (
     <div className="space-y-6">
@@ -29,7 +99,7 @@ export function Dashboard() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Dashboard Overview</h1>
           <div className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-            Last updated: Today
+            Real-time data from database
           </div>
         </div>
         <button 
@@ -42,13 +112,17 @@ export function Dashboard() {
       </div>
 
       {/* Low Stock Alert */}
-      <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 p-4 rounded-r-lg flex items-start">
-        <AlertTriangle className="text-orange-500 w-5 h-5 mt-0.5 mr-3 flex-shrink-0" />
-        <div>
-          <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-400">Peringatan Stok Menipis</h3>
-          <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">Barang <strong>Proyektor Epson</strong> saat ini tersisa 3 unit. Harap lakukan pengecekan dan restock barang jika diperlukan.</p>
+      {lowStockProducts.length > 0 && (
+        <div className="bg-orange-50 dark:bg-orange-900/20 border-l-4 border-orange-500 p-4 rounded-r-lg flex items-start">
+          <AlertTriangle className="text-orange-500 w-5 h-5 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-400">Peringatan Stok Menipis</h3>
+            <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
+              Barang <strong>{lowStockProducts.map(p => p.nama_barang).join(', ')}</strong> saat ini tersisa kurang dari 5 unit. Harap lakukan pengecekan.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -67,20 +141,20 @@ export function Dashboard() {
 
       {/* Chart Section */}
       <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Grafik Peminjaman per Bulan</h3>
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Grafik Peminjaman per Bulan (Tahun Ini)</h3>
         <div className="h-64 flex items-end justify-between space-x-2 pt-4">
-          {chartData.map((data) => (
-            <div key={data.month} className="flex flex-col items-center flex-1 group">
+          {defaultChartData.map((d) => (
+            <div key={d.month} className="flex flex-col items-center flex-1 group">
               <div 
                 className="w-full max-w-[3rem] bg-red-100 dark:bg-red-900/30 rounded-t-lg relative group-hover:bg-red-200 dark:group-hover:bg-red-800/50 transition-colors"
-                style={{ height: `${(data.count / maxCount) * 100}%` }}
+                style={{ height: `${(d.count / maxCount) * 100}%`, minHeight: d.count > 0 ? '10%' : '2px' }}
               >
                 <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-xs py-1 px-2 rounded">
-                  {data.count}
+                  {d.count}
                 </div>
-                <div className="absolute bottom-0 w-full bg-red-500 dark:bg-red-500 rounded-t-lg transition-all" style={{ height: '4px' }} />
+                <div className="absolute bottom-0 w-full bg-red-500 dark:bg-red-500 rounded-t-lg transition-all" style={{ height: d.count > 0 ? '4px' : '2px' }} />
               </div>
-              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-2">{data.month}</span>
+              <span className="text-xs font-medium text-gray-500 dark:text-gray-400 mt-2">{d.month}</span>
             </div>
           ))}
         </div>

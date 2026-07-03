@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { apiFetch } from "../utils/api";
 
 const AuthContext = createContext();
 
@@ -18,31 +19,39 @@ export function AuthProvider({ children }) {
     setIsLoading(false);
   }, []);
 
-  const login = (email, password) => {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        let role = "Staff";
-        if (email.includes("admin")) role = "Admin";
-        if (email.includes("manager")) role = "Manager";
-
-        // Allow 'password' or the email prefix (e.g., 'admin') as password for easier testing
-        const validPassword = password.trim() === "password" || password.trim() === email.split("@")[0];
-        
-        if (validPassword) {
-          const newUser = { id: 1, name: email.split("@")[0], email, role };
-          setUser(newUser);
-          localStorage.setItem("inventory_user", JSON.stringify(newUser));
-          resolve(newUser);
-        } else {
-          reject(new Error("Invalid credentials. Please use password 'password'"));
-        }
-      }, 500);
-    });
+  const login = async (email, password) => {
+    try {
+      const response = await apiFetch('/login', {
+        method: 'POST',
+        body: JSON.stringify({ email, password }),
+      });
+      
+      localStorage.setItem("inventory_token", response.access_token);
+      
+      const formattedUser = {
+        id: response.data.id,
+        name: response.data.name,
+        email: response.data.email,
+        role: response.data.role?.name || "Staff"
+      };
+      
+      setUser(formattedUser);
+      localStorage.setItem("inventory_user", JSON.stringify(formattedUser));
+      return formattedUser;
+    } catch (error) {
+      throw new Error(error.message || "Login failed");
+    }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await apiFetch('/logout', { method: 'POST' });
+    } catch (e) {
+      console.error("Logout error", e);
+    }
     setUser(null);
     localStorage.removeItem("inventory_user");
+    localStorage.removeItem("inventory_token");
   };
 
   return (
