@@ -32,7 +32,7 @@ export function AuthProvider({ children }) {
         id: response.data.id,
         name: response.data.name,
         email: response.data.email,
-        role: response.data.role?.name || "Staff"
+        role: response.data.role || "Staff"
       };
       
       setUser(formattedUser);

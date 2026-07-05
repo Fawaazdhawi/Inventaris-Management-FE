@@ -37,16 +37,26 @@ export function MasterBarang() {
 
   const fetchCategories = async () => {
     try {
-      // Actually we don't have a specific categories API yet, but if you do, fetch it here.
-      // For now, let's simulate fetching or hardcode if the backend endpoint doesn't exist
-      // const res = await apiFetch('/categories'); setCategories(res.data);
-      setCategories([
-        { id: 1, name: 'Elektronik' },
-        { id: 2, name: 'Furniture' },
-        { id: 3, name: 'Kendaraan' },
-      ]);
+      const res = await apiFetch('/categories'); 
+      setCategories(res);
     } catch (e) {
-      console.error(e);
+      console.error("Gagal mengambil kategori:", e);
+    }
+  };
+
+  const handleAddCategory = async () => {
+    const newCatName = window.prompt("Masukkan nama kategori baru:");
+    if (newCatName && newCatName.trim() !== "") {
+      try {
+        const res = await apiFetch('/categories', {
+          method: 'POST',
+          body: JSON.stringify({ name: newCatName.trim() })
+        });
+        setCategories(prev => [...prev, res]);
+        setFormData(prev => ({...prev, category_id: res.id}));
+      } catch (e) {
+        alert("Gagal menambah kategori: " + e.message);
+      }
     }
   };
 
@@ -66,7 +76,7 @@ export function MasterBarang() {
     setModalMode(mode);
     setSelectedItem(item);
     if (item && mode !== 'add') {
-      const imageUrl = item.image ? `http://localhost${item.image}` : null;
+      const imageUrl = item.image ? `http://localhost:8000${item.image}` : null;
       setFormData({ 
         code: item.kode_barang || "", 
         name: item.nama_barang || "", 
@@ -260,7 +270,7 @@ export function MasterBarang() {
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-6 py-4">
                       {item.image ? (
-                        <img src={`http://localhost${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                        <img src={`http://localhost:8000${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
                       ) : (
                         <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400">
                           <ImageIcon size={16} />
@@ -388,18 +398,30 @@ export function MasterBarang() {
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Kategori</label>
-                      <select 
-                        required
-                        disabled={modalMode === 'view'}
-                        value={formData.category_id}
-                        onChange={(e) => setFormData({...formData, category_id: parseInt(e.target.value)})}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800"
-                      >
-                        <option value="">Pilih Kategori</option>
-                        {categories.map(cat => (
-                          <option key={cat.id} value={cat.id}>{cat.name}</option>
-                        ))}
-                      </select>
+                      <div className="flex gap-2">
+                        <select 
+                          required
+                          disabled={modalMode === 'view'}
+                          value={formData.category_id}
+                          onChange={(e) => setFormData({...formData, category_id: parseInt(e.target.value)})}
+                          className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none disabled:bg-gray-100 dark:disabled:bg-gray-800"
+                        >
+                          <option value="">Pilih Kategori</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.id}>{cat.name}</option>
+                          ))}
+                        </select>
+                        {modalMode !== 'view' && (
+                          <button
+                            type="button"
+                            onClick={handleAddCategory}
+                            className="px-3 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg transition-colors flex items-center justify-center"
+                            title="Tambah Kategori Baru"
+                          >
+                            <Plus size={20} />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Stok</label>

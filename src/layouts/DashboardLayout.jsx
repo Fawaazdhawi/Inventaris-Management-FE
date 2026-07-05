@@ -119,12 +119,8 @@ export function DashboardLayout() {
                   <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifikasi</h3>
                   </div>
-                  <div className="max-h-64 overflow-y-auto">
-                    <div className="px-4 py-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors cursor-pointer border-l-4 border-red-500">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">Stok Menipis: Proyektor Epson</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">Sisa stok 3 unit. Harap segera restock.</p>
-                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Baru saja</p>
-                    </div>
+                  <div className="max-h-64 overflow-y-auto p-4 text-center">
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Tidak ada notifikasi baru.</p>
                   </div>
                 </div>
               )}

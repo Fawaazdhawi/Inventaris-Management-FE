@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost/api';
+const BASE_URL = 'http://localhost:8000/api';
 
 export const apiFetch = async (endpoint, options = {}) => {
   const token = localStorage.getItem('inventory_token');
@@ -31,6 +31,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     if (response.status === 401) {
       localStorage.removeItem('inventory_token');
       localStorage.removeItem('inventory_user');
+      window.location.href = '/login';
     }
     
     const errorData = await response.json().catch(() => ({ message: 'Server Error' }));
