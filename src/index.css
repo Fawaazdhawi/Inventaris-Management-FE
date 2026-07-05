@@ -3,7 +3,8 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-brand: #ed1c24; /* Telkomsel Red */
+  --color-brand: #ed1c24;
+  /* Telkomsel Red */
   --color-brand-dark: #cc181f;
   --color-brand-light: #f55b61;
 }
@@ -12,6 +13,7 @@
   body {
     @apply bg-gray-50 text-gray-900;
   }
+
   .dark body {
     @apply bg-gray-900 text-gray-100;
   }
