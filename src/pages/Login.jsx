@@ -73,15 +73,7 @@ export function Login() {
       <div className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
         Don't have an account? <Link to="/register" className="text-red-600 hover:text-red-700 dark:text-red-400 font-medium">Register here</Link>
       </div>
-      
-      <div className="mt-8 p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg text-xs text-gray-500 dark:text-gray-400">
-        <p className="font-semibold mb-1">Dummy Credentials (Password: password):</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>admin@test.com (Admin)</li>
-          <li>manager@test.com (Manager)</li>
-          <li>staff@test.com (Staff)</li>
-        </ul>
-      </div>
+
     </div>
   );
 }
