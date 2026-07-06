@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Plus, Search, Edit2, Trash2, Eye, X, FileDown, FileText, Image as ImageIcon, Upload } from "lucide-react";
+import { Plus, Search, Edit2, Trash2, Eye, X, FileDown, FileText, Image as ImageIcon, Upload, AlertTriangle } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../utils/api";
 import { jsPDF } from "jspdf";
@@ -83,6 +83,7 @@ export function MasterBarang() {
   }, []);
 
   const filteredItems = items; // now filtering is server-side
+  const lowStockItems = filteredItems.filter(item => item.stok < 10);
 
   const openModal = (mode, item = null) => {
     setModalMode(mode);
@@ -246,6 +247,18 @@ export function MasterBarang() {
           )}
         </div>
       </div>
+
+      {lowStockItems.length > 0 && (
+        <div className="bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400 dark:border-yellow-500 p-4 rounded-lg shadow-sm flex items-start">
+          <AlertTriangle className="h-5 w-5 text-yellow-500 dark:text-yellow-400 mt-0.5 mr-3 flex-shrink-0" />
+          <div>
+            <h3 className="text-sm font-bold text-yellow-800 dark:text-yellow-300">Stok Menipis</h3>
+            <p className="text-sm text-yellow-700 dark:text-yellow-400 mt-1">
+              Terdapat {lowStockItems.length} barang di halaman ini yang stoknya di bawah 10. Segera lakukan pengadaan!
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">
         {/* Toolbar */}

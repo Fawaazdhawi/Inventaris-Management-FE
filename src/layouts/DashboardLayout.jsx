@@ -4,14 +4,14 @@ import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import { echo } from "../utils/echo";
 import { cn } from "../utils/cn";
-import { 
-  LayoutDashboard, 
-  Package, 
-  ArrowLeftRight, 
-  LogOut, 
-  Sun, 
-  Moon, 
-  Menu, 
+import {
+  LayoutDashboard,
+  Package,
+  ArrowLeftRight,
+  LogOut,
+  Sun,
+  Moon,
+  Menu,
   X,
   Bell,
   Users
@@ -59,7 +59,7 @@ export function DashboardLayout() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex transition-colors duration-200">
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-40 lg:hidden backdrop-blur-sm"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -75,7 +75,7 @@ export function DashboardLayout() {
             <Package size={18} />
           </div>
           <span className="font-bold text-lg text-gray-900 dark:text-white">Inventaris</span>
-          <button 
+          <button
             className="ml-auto lg:hidden text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
             onClick={() => setIsSidebarOpen(false)}
           >
@@ -90,8 +90,8 @@ export function DashboardLayout() {
               to={item.path}
               className={({ isActive }) => cn(
                 "flex items-center px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
-                isActive 
-                  ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400" 
+                isActive
+                  ? "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
                   : "text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700/50"
               )}
             >
@@ -135,7 +135,7 @@ export function DashboardLayout() {
                   <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800"></span>
                 )}
               </button>
-              
+
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
                   <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
@@ -168,7 +168,7 @@ export function DashboardLayout() {
             >
               {theme === "light" ? <Moon size={20} /> : <Sun size={20} />}
             </button>
-            
+
             <div className="flex items-center space-x-3 pl-4 border-l border-gray-200 dark:border-gray-700">
               <div className="flex flex-col text-right hidden sm:flex">
                 <span className="text-sm font-medium text-gray-900 dark:text-white">{user?.name || "User"}</span>

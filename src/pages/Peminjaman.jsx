@@ -15,7 +15,7 @@ export function Peminjaman() {
   const [isLoading, setIsLoading] = useState(false);
 
   const [formData, setFormData] = useState({
-    product_id: "", tglPinjam: new Date().toISOString().split('T')[0]
+    nama_peminjam: "", product_id: "", tglPinjam: new Date().toISOString().split('T')[0]
   });
 
   const fetchBorrowings = async () => {
@@ -36,9 +36,19 @@ export function Peminjaman() {
     }
   };
 
+  const fetchUsers = async () => {
+    try {
+      const res = await apiFetch('/users');
+      setUsers(res.data || res || []);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchBorrowings();
     fetchProducts();
+    fetchUsers();
   }, []);
 
   const aktifPeminjaman = peminjaman.filter(p => p.status === "dipinjam");
@@ -49,18 +59,20 @@ export function Peminjaman() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.product_id) return alert("Pilih barang!");
+    if (!formData.nama_peminjam.trim()) return alert("Ketik nama peminjam!");
     
     setIsLoading(true);
     try {
       await apiFetch('/borrowings', {
         method: 'POST',
         body: JSON.stringify({
+          nama_peminjam: formData.nama_peminjam,
           tanggal_pinjam: formData.tglPinjam,
           product_ids: [parseInt(formData.product_id)]
         })
       });
       setIsModalOpen(false);
-      setFormData({ product_id: "", tglPinjam: new Date().toISOString().split('T')[0] });
+      setFormData({ nama_peminjam: "", product_id: "", tglPinjam: new Date().toISOString().split('T')[0] });
       setActiveTab("aktif");
       await fetchBorrowings();
       await fetchProducts(); // Update stock in products list if used elsewhere
@@ -152,7 +164,9 @@ export function Peminjaman() {
               {displayedData.length > 0 ? (
                 displayedData.map(item => (
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
-                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">{item.user?.name || '-'}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
+                      {item.nama_peminjam || item.user?.name || '-'}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{getProductNames(item.details)}</td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tanggal_pinjam || item.tglPinjam}</td>
                     <td className="px-6 py-4 text-sm text-gray-700 dark:text-gray-300">{item.tanggal_kembali || '-'}</td>
@@ -206,11 +220,12 @@ export function Peminjaman() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Nama Peminjam</label>
                   <input 
                     type="text" 
-                    readOnly
-                    value={user?.name || ""}
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white outline-none cursor-not-allowed"
+                    required
+                    placeholder="Ketik nama peminjam..."
+                    value={formData.nama_peminjam}
+                    onChange={(e) => setFormData({...formData, nama_peminjam: e.target.value})}
+                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 outline-none"
                   />
-                  <p className="text-xs text-gray-500 mt-1">Sesuai dengan akun yang sedang login</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Barang yang Dipinjam</label>
