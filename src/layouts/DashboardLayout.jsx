@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, NavLink, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
+import { echo } from "../utils/echo";
 import { cn } from "../utils/cn";
 import { 
   LayoutDashboard, 
@@ -27,6 +28,25 @@ export function DashboardLayout() {
     logout();
     navigate("/login");
   };
+
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (user && (user.role === 'Admin' || user.role === 'Staff')) {
+      const channel = echo.channel('inventory-channel');
+      channel.listen('LowStockNotification', (e) => {
+        setNotifications(prev => [
+          { id: Date.now(), message: `Stok menipis untuk barang: ${e.product.nama_barang} (Sisa: ${e.product.stok})` },
+          ...prev
+        ]);
+        setShowNotifications(true);
+      });
+
+      return () => {
+        channel.stopListening('LowStockNotification');
+      };
+    }
+  }, [user]);
 
   const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["Admin", "Manager", "Staff"] },
@@ -111,16 +131,31 @@ export function DashboardLayout() {
                 title="Notifications"
               >
                 <Bell size={20} />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800"></span>
+                {notifications.length > 0 && (
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full border border-white dark:border-gray-800"></span>
+                )}
               </button>
               
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-                  <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50">
+                  <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
                     <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Notifikasi</h3>
+                    {notifications.length > 0 && (
+                      <button onClick={() => setNotifications([])} className="text-xs text-red-600 hover:text-red-700">Clear</button>
+                    )}
                   </div>
                   <div className="max-h-64 overflow-y-auto p-4 text-center">
-                    <p className="text-sm text-gray-500 dark:text-gray-400">Tidak ada notifikasi baru.</p>
+                    {notifications.length > 0 ? (
+                      <ul className="text-left space-y-3">
+                        {notifications.map(n => (
+                          <li key={n.id} className="text-sm text-gray-700 dark:text-gray-300 border-b border-gray-100 dark:border-gray-700 pb-2">
+                            {n.message}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Tidak ada notifikasi baru.</p>
+                    )}
                   </div>
                 </div>
               )}

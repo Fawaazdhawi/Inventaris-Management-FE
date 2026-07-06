@@ -2,7 +2,7 @@ const BASE_URL = 'http://localhost:8000/api';
 
 export const apiFetch = async (endpoint, options = {}) => {
   const token = localStorage.getItem('inventory_token');
-  
+
   const defaultHeaders = {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
@@ -33,7 +33,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       localStorage.removeItem('inventory_user');
       window.location.href = '/login';
     }
-    
+
     const errorData = await response.json().catch(() => ({ message: 'Server Error' }));
     throw new Error(errorData.message || `Request failed with status ${response.status}`);
   }

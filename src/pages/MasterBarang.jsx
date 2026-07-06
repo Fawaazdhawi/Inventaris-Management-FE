@@ -20,16 +20,23 @@ export function MasterBarang() {
   const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [formData, setFormData] = useState({
     code: "", name: "", category_id: "", stock: 0, location: "", condition: "Baik", imagePreview: null, imageFile: null
   });
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 1, search = "") => {
     try {
-      const response = await apiFetch('/products');
-      // Pagination response has data array inside .data
-      setItems(response.data || response || []);
+      const response = await apiFetch(`/products?page=${page}&search=${search}`);
+      if (response && response.data) {
+        setItems(response.data);
+        setCurrentPage(response.current_page || 1);
+        setTotalPages(response.last_page || 1);
+      } else {
+        setItems(response || []);
+      }
     } catch (e) {
       console.error("Gagal mengambil data barang:", e);
     }
@@ -61,16 +68,21 @@ export function MasterBarang() {
   };
 
   useEffect(() => {
-    fetchProducts();
+    const timer = setTimeout(() => {
+      fetchProducts(1, searchTerm);
+    }, 500); // debounce search
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  useEffect(() => {
+    fetchProducts(currentPage, searchTerm);
+  }, [currentPage]);
+
+  useEffect(() => {
     fetchCategories();
   }, []);
 
-  const filteredItems = items.filter(item => {
-    const itemName = item.nama_barang || item.name || '';
-    const itemCode = item.kode_barang || item.code || '';
-    return itemName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-           itemCode.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  const filteredItems = items; // now filtering is server-side
 
   const openModal = (mode, item = null) => {
     setModalMode(mode);
@@ -322,6 +334,29 @@ export function MasterBarang() {
             </tbody>
           </table>
         </div>
+        
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="p-4 border-t border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
+            <button 
+              disabled={currentPage === 1}
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Sebelumnya
+            </button>
+            <span className="text-gray-600 dark:text-gray-400 text-sm">
+              Halaman {currentPage} dari {totalPages}
+            </span>
+            <button 
+              disabled={currentPage === totalPages}
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+              className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              Berikutnya
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Modal */}

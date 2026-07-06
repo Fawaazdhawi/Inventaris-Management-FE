@@ -14,17 +14,25 @@ export function Register() {
     e.preventDefault();
     setIsLoading(true);
     
-    // Simulate registration then login
-    setTimeout(async () => {
-      try {
-        await login("staff@test.com", "password"); // Dummy login
-        navigate("/");
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setIsLoading(false);
-      }
-    }, 1000);
+    try {
+      const response = await fetch('http://localhost:8000/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ name, email, password })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Registration failed');
+      
+      // Attempt login after register
+      await login(email, password);
+      navigate("/");
+    } catch (err) {
+      alert(err.message);
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
