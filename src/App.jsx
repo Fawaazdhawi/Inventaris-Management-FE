@@ -15,7 +15,10 @@ function ProtectedRoute({ children, allowedRoles }) {
   
   if (isLoading) return <div className="min-h-screen flex items-center justify-center text-gray-500">Loading session...</div>;
   if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
+  if (allowedRoles && !allowedRoles.includes(user.role)) {
+    if (user.role === "Staff") return <Navigate to="/barang" replace />;
+    return <Navigate to="/" replace />;
+  }
   
   return children;
 }
@@ -30,7 +33,14 @@ export default function App() {
       </Route>
       
       <Route element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-        <Route path="/" element={<Dashboard />} />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute allowedRoles={["Admin", "Manager"]}>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/barang" 
           element={

@@ -16,8 +16,12 @@ export function Login() {
     setIsLoading(true);
     
     try {
-      await login(email, password);
-      navigate("/");
+      const user = await login(email, password);
+      if (user.role === "Staff") {
+        navigate("/barang");
+      } else {
+        navigate("/");
+      }
     } catch (err) {
       setError(err.message || "Login failed");
     } finally {
