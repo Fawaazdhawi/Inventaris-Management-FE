@@ -1,13 +1,16 @@
 import { useState, useEffect } from "react";
-import { Plus, CheckCircle2, History, X } from "lucide-react";
+import { Plus, CheckCircle2, History, X, FileDown, FileText } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { apiFetch } from "../utils/api";
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
+import * as XLSX from "xlsx";
 
 export function Peminjaman() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "Admin" || user?.role === "Staff";
+  const isAdmin = user?.role === "Admin" || user?.role === "Manager";
   
-  const [activeTab, setActiveTab] = useState("aktif"); // aktif, riwayat
+  const [activeTab, setActiveTab] = useState("aktif");
   const [isModalOpen, setIsModalOpen] = useState(false);
   
   const [peminjaman, setPeminjaman] = useState([]);
@@ -75,7 +78,7 @@ export function Peminjaman() {
       setFormData({ nama_peminjam: "", product_id: "", tglPinjam: new Date().toISOString().split('T')[0] });
       setActiveTab("aktif");
       await fetchBorrowings();
-      await fetchProducts(); // Update stock in products list if used elsewhere
+      await fetchProducts();
     } catch (e) {
       alert("Gagal meminjam barang: " + e.message);
     } finally {
@@ -99,10 +102,52 @@ export function Peminjaman() {
     }
   };
 
-  // Helper to get comma separated product names
   const getProductNames = (details) => {
     if (!details || details.length === 0) return "-";
     return details.map(d => d.product?.nama_barang || "Unknown").join(", ");
+  };
+
+  const handleExport = (type) => {
+    if (type === 'Excel') {
+      const dataToExport = displayedData.map((item, index) => ({
+        No: index + 1,
+        'Nama Peminjam': item.nama_peminjam || item.user?.name || '-',
+        'Barang': getProductNames(item.details),
+        'Tgl Pinjam': item.tanggal_pinjam || item.tglPinjam,
+        'Tgl Kembali': item.tanggal_kembali || '-',
+        'Status': item.status
+      }));
+      const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Data Peminjaman");
+      XLSX.writeFile(workbook, `Laporan_Peminjaman_${activeTab}.xlsx`);
+    } else if (type === 'PDF') {
+      const doc = new jsPDF();
+      doc.text(`Laporan Data Peminjaman (${activeTab})`, 14, 15);
+      
+      const tableColumn = ["No", "Nama Peminjam", "Barang", "Tgl Pinjam", "Tgl Kembali", "Status"];
+      const tableRows = [];
+
+      displayedData.forEach((item, index) => {
+        const rowData = [
+          index + 1,
+          item.nama_peminjam || item.user?.name || '-',
+          getProductNames(item.details),
+          item.tanggal_pinjam || item.tglPinjam,
+          item.tanggal_kembali || '-',
+          item.status
+        ];
+        tableRows.push(rowData);
+      });
+
+      autoTable(doc, {
+        head: [tableColumn],
+        body: tableRows,
+        startY: 20,
+      });
+
+      doc.save(`Laporan_Peminjaman_${activeTab}.pdf`);
+    }
   };
 
   return (
@@ -110,13 +155,33 @@ export function Peminjaman() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Peminjaman Barang</h1>
         
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm"
-        >
-          <Plus size={18} className="mr-2" />
-          Ajukan Peminjaman
-        </button>
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {isAdmin && (
+            <>
+              <button 
+                onClick={() => handleExport('Excel')}
+                className="flex items-center bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex-1 sm:flex-none justify-center"
+              >
+                <FileDown size={18} className="mr-2" />
+                Export Excel
+              </button>
+              <button 
+                onClick={() => handleExport('PDF')}
+                className="flex items-center bg-red-800 hover:bg-red-900 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm flex-1 sm:flex-none justify-center"
+              >
+                <FileText size={18} className="mr-2" />
+                Export PDF
+              </button>
+            </>
+          )}
+          <button 
+            onClick={() => setIsModalOpen(true)}
+            className="flex items-center bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm w-full sm:w-auto justify-center mt-2 sm:mt-0"
+          >
+            <Plus size={18} className="mr-2" />
+            Ajukan Peminjaman
+          </button>
+        </div>
       </div>
 
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700/50 overflow-hidden">

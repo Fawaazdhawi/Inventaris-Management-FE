@@ -14,12 +14,7 @@ export function Dashboard() {
       try {
         const res = await apiFetch('/dashboard');
         setData(res);
-
-        // Let's also fetch products briefly just to check low stock
-        const productRes = await apiFetch('/products');
-        const products = productRes.data || productRes || [];
-        const lowStock = products.filter(p => p.stok < 5 && p.stok > 0);
-        setLowStockProducts(lowStock);
+        setLowStockProducts(res.low_stock_products || []);
       } catch (e) {
         console.error("Failed to load dashboard:", e);
       } finally {
@@ -34,7 +29,6 @@ export function Dashboard() {
     const doc = new jsPDF();
     doc.text("Laporan Ringkasan Dashboard", 14, 15);
 
-    // Add stats
     doc.setFontSize(12);
     doc.text(`Total Macam Barang: ${data?.total_barang || 0}`, 14, 25);
     doc.text(`Barang Dipinjam: ${data?.barang_dipinjam || 0}`, 14, 32);
@@ -48,7 +42,6 @@ export function Dashboard() {
       doc.text(`Barang: ${lowStockNames}`, 14, 57);
     }
 
-    // Add Chart Data as Table
     const tableColumn = ["Bulan", "Jumlah Peminjaman"];
     const tableRows = defaultChartData.map(d => [d.month, d.count]);
 
@@ -75,13 +68,10 @@ export function Dashboard() {
     { name: "Total Stok Tersedia", value: data?.barang_tersedia || 0, icon: CheckCircle, iconBg: "bg-green-500/10 dark:bg-green-500/20", iconColor: "text-green-500" },
   ];
 
-  // Helper to map numeric month to string
   const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-  // Create default 12 months array
   const defaultChartData = monthNames.map((m, i) => ({ month: m, count: 0 }));
 
-  // Fill with real data
   if (data?.grafik_peminjaman_bulanan) {
     data.grafik_peminjaman_bulanan.forEach(item => {
       const mIndex = parseInt(item.month) - 1;
@@ -91,7 +81,7 @@ export function Dashboard() {
     });
   }
 
-  const maxCount = Math.max(...defaultChartData.map(d => d.count), 10); // at least 10 so it's not empty if all 0
+  const maxCount = Math.max(...defaultChartData.map(d => d.count), 10);
 
   return (
     <div className="space-y-6">
@@ -118,7 +108,7 @@ export function Dashboard() {
           <div>
             <h3 className="text-sm font-semibold text-orange-800 dark:text-orange-400">Peringatan Stok Menipis</h3>
             <p className="text-sm text-orange-700 dark:text-orange-300 mt-1">
-              Barang <strong>{lowStockProducts.map(p => p.nama_barang).join(', ')}</strong> saat ini tersisa kurang dari 5 unit. Harap lakukan pengecekan.
+              Barang <strong>{lowStockProducts.map(p => p.nama_barang).join(', ')}</strong> saat ini tersisa kurang dari 10 unit. Harap lakukan pengecekan.
             </p>
           </div>
         </div>

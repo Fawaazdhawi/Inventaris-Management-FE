@@ -13,7 +13,7 @@ export function MasterBarang() {
   
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // add, edit, view
+  const [modalMode, setModalMode] = useState("add");
   const [selectedItem, setSelectedItem] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -70,7 +70,7 @@ export function MasterBarang() {
   useEffect(() => {
     const timer = setTimeout(() => {
       fetchProducts(1, searchTerm);
-    }, 500); // debounce search
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchTerm]);
 
@@ -82,7 +82,7 @@ export function MasterBarang() {
     fetchCategories();
   }, []);
 
-  const filteredItems = items; // now filtering is server-side
+  const filteredItems = items;
   const lowStockItems = filteredItems.filter(item => item.stok < 10);
 
   const openModal = (mode, item = null) => {
@@ -144,14 +144,14 @@ export function MasterBarang() {
           body: submitData
         });
       } else if (modalMode === 'edit') {
-        submitData.append('_method', 'PUT'); // Laravel workaround for FormData PUT
+        submitData.append('_method', 'PUT');
         await apiFetch(`/products/${selectedItem.id}`, {
           method: 'POST',
           body: submitData
         });
       }
       
-      await fetchProducts(); // Refresh list
+      await fetchProducts();
       closeModal();
     } catch (e) {
       alert("Gagal menyimpan barang: " + e.message);

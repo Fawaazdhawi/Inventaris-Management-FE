@@ -24,7 +24,6 @@ export function Register() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.message || 'Registration failed');
       
-      // Attempt login after register
       await login(email, password);
       navigate("/");
     } catch (err) {

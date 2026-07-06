@@ -12,7 +12,6 @@ export const apiFetch = async (endpoint, options = {}) => {
     defaultHeaders['Authorization'] = `Bearer ${token}`;
   }
 
-  // Handle FormData separately as it shouldn't have Content-Type explicitly set
   if (options.body instanceof FormData) {
     delete defaultHeaders['Content-Type'];
   }

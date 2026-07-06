@@ -9,7 +9,7 @@ export function UserManagement() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState("add"); // add, edit
+  const [modalMode, setModalMode] = useState("add");
   const [selectedUser, setSelectedUser] = useState(null);
 
   const [formData, setFormData] = useState({
@@ -18,9 +18,8 @@ export function UserManagement() {
 
   const fetchUsers = async () => {
     try {
-      const data = await apiFetch('/users');
-      // Some APIs return data directly, some wrap in data.data
-      setUsers(data.data || data || []);
+      const res = await apiFetch('/users');
+      setUsers(res.data || res || []);
     } catch (e) {
       console.error("Gagal mengambil data pengguna:", e);
     }
@@ -44,7 +43,7 @@ export function UserManagement() {
       setFormData({ 
         name: user.name || "", 
         email: user.email || "", 
-        password: "", // empty for edit unless they want to change
+        password: "",
         role: user.role || "Staff", 
         status: user.status || "Aktif"
       });
@@ -65,7 +64,7 @@ export function UserManagement() {
     try {
       const payload = { ...formData };
       if (modalMode === 'edit' && !payload.password) {
-        delete payload.password; // Don't send empty password on edit
+        delete payload.password;
       }
 
       if (modalMode === 'add') {
@@ -82,7 +81,7 @@ export function UserManagement() {
         });
       }
       
-      await fetchUsers(); // Refresh list
+      await fetchUsers();
       closeModal();
     } catch (e) {
       alert("Gagal menyimpan pengguna: " + e.message);

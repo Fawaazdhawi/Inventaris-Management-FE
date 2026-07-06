@@ -51,7 +51,7 @@ export function DashboardLayout() {
   const navItems = [
     { name: "Dashboard", path: "/", icon: LayoutDashboard, roles: ["Admin", "Manager", "Staff"] },
     { name: "Master Barang", path: "/barang", icon: Package, roles: ["Admin", "Staff"] },
-    { name: "Peminjaman", path: "/peminjaman", icon: ArrowLeftRight, roles: ["Admin", "Staff"] },
+    { name: "Peminjaman", path: "/peminjaman", icon: ArrowLeftRight, roles: ["Admin", "Manager", "Staff"] },
     { name: "Pengguna", path: "/users", icon: Users, roles: ["Admin"] },
   ];
 

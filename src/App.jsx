@@ -42,7 +42,7 @@ export default function App() {
         <Route 
           path="/peminjaman" 
           element={
-            <ProtectedRoute allowedRoles={["Admin", "Staff"]}>
+            <ProtectedRoute allowedRoles={["Admin", "Manager", "Staff"]}>
               <Peminjaman />
             </ProtectedRoute>
           } 
