@@ -89,7 +89,8 @@ export function MasterBarang() {
     setModalMode(mode);
     setSelectedItem(item);
     if (item && mode !== 'add') {
-      const imageUrl = item.image ? `http://localhost:8000${item.image}` : null;
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+      const imageUrl = item.image ? `${API_BASE_URL}${item.image}` : null;
       setFormData({ 
         code: item.kode_barang || "", 
         name: item.nama_barang || "", 
@@ -295,7 +296,7 @@ export function MasterBarang() {
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-6 py-4">
                       {item.image ? (
-                        <img src={`http://localhost:8000${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                        <img src={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
                       ) : (
                         <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400">
                           <ImageIcon size={16} />
