@@ -415,7 +415,12 @@ export function MasterBarang() {
                       onClick={() => modalMode !== 'view' && fileInputRef.current?.click()}
                     >
                       {formData.imagePreview ? (
-                        <img src={formData.imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                        <img 
+                          src={formData.imagePreview} 
+                          alt="Preview" 
+                          onError={handleImageError}
+                          className="w-full h-full object-cover" 
+                        />
                       ) : (
                         <div className="text-center p-4">
                           <ImageIcon className="mx-auto h-8 w-8 text-gray-400" />
