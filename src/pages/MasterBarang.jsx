@@ -85,12 +85,24 @@ export function MasterBarang() {
   const filteredItems = items;
   const lowStockItems = filteredItems.filter(item => item.stok < 10);
 
+  const getImageUrl = (path) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${cleanBaseUrl}${cleanPath}`;
+  };
+
+  const handleImageError = (e) => {
+    e.target.onerror = null;
+    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiM5Y2EzYWYiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIj48cmVjdCB4PSIzIiB5PSIzIiB3aWR0aD0iMTgiIGhlaWdodD0iMTgiIHJ4PSIyIiByeT0iMiI+PC9yZWN0PjxjaXJjbGUgY3g9IjguNSIgY3k9IjguNSIgcj0iMS41Ij48L2NpcmNsZT48cG9seWxpbmUgcG9pbnRzPSIyMSAxNSAxNiAxMCA1IDIxIj48L3BvbHlsaW5lPjwvc3ZnPg==';
+  };
+
   const openModal = (mode, item = null) => {
     setModalMode(mode);
     setSelectedItem(item);
     if (item && mode !== 'add') {
-      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
-      const imageUrl = item.image ? `${API_BASE_URL}${item.image}` : null;
       setFormData({ 
         code: item.kode_barang || "", 
         name: item.nama_barang || "", 
@@ -98,7 +110,7 @@ export function MasterBarang() {
         stock: item.stok || 0, 
         location: item.lokasi_penyimpanan || "", 
         condition: item.kondisi_barang || "Baik", 
-        imagePreview: imageUrl,
+        imagePreview: getImageUrl(item.image),
         imageFile: null
       });
     } else {
@@ -296,7 +308,12 @@ export function MasterBarang() {
                   <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/20 transition-colors">
                     <td className="px-6 py-4">
                       {item.image ? (
-                        <img src={`${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000'}${item.image}`} alt={item.nama_barang} className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" />
+                        <img 
+                          src={getImageUrl(item.image)} 
+                          alt={item.nama_barang} 
+                          onError={handleImageError}
+                          className="w-10 h-10 object-cover rounded-md border border-gray-200 dark:border-gray-700" 
+                        />
                       ) : (
                         <div className="w-10 h-10 bg-gray-100 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700 flex items-center justify-center text-gray-400">
                           <ImageIcon size={16} />
@@ -350,9 +367,8 @@ export function MasterBarang() {
         </div>
         
         {/* Pagination Controls */}
-        {totalPages > 1 && (
-          <div className="p-4 border-t border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
-            <button 
+        <div className="p-4 border-t border-gray-100 dark:border-gray-700/50 flex justify-between items-center">
+          <button 
               disabled={currentPage === 1}
               onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
@@ -363,14 +379,14 @@ export function MasterBarang() {
               Halaman {currentPage} dari {totalPages}
             </span>
             <button 
-              disabled={currentPage === totalPages}
+              disabled={currentPage === totalPages || totalPages === 0}
               onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
               className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg disabled:opacity-50 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
             >
               Berikutnya
             </button>
           </div>
-        )}
+
       </div>
 
       {/* Modal */}
