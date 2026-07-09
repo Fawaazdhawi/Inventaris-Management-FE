@@ -29,7 +29,7 @@ export function MasterBarang() {
 
   const fetchProducts = async (page = 1, search = "") => {
     try {
-      const response = await apiFetch(`/products?page=${page}&search=${search}`);
+      const response = await apiFetch(`/products?page=${page}&search=${search}&limit=4`);
       if (response && response.data) {
         setItems(response.data);
         setCurrentPage(response.current_page || 1);
